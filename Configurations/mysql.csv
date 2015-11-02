@@ -1,0 +1,13 @@
+type,name,min,max
+intx,max_connections,1,100000
+intx,max_allowed_packet,1024,1073741824
+intx,max_connect_errors,1,10000
+intx,table_cache,1,524288
+intx,key_buffer_size,8,4294967295
+intx,innodb_buffer_pool_size,5242880,8589934592
+intx,sort_buffer_size,32768,4294967295
+intx,read_buffer_size,8200,4294967295
+intx,thread_stack,131072,4294967295
+intx,thread_cache_size,0,16384
+intx,query_cache_limit,0,4294967295
+intx,query_cache_size,0,4294967295

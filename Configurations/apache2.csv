@@ -1,0 +1,8 @@
+type,name,min,max
+intx,StartServers,0,400
+intx,MinSpareThreads,0,400
+intx,MaxSpareThreads,0,400
+intx,ThreadLimit,0,400
+intx,ThreadsPerChild,0,400
+intx,MaxRequestWorkers,0,400
+intx,MaxConnectionsPerChild,0,400

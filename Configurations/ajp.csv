@@ -1,0 +1,5 @@
+type,name,min,max
+intx,AJP_acceptorThreadCount,1,1000
+intx,AJP_maxThreads,1,10000
+intx,AJP_acceptCount,1,10000
+intx,AJP_minSpareThreads,1,10000
