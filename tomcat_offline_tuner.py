@@ -42,7 +42,7 @@ class x10Tuner(JvmFlagsTunerInterface):
         print self.flags
 
         temp_metric = 0
-        args.iterations=5;
+        args.iterations=3;
 
         # if self.flags:
         self.set_configuration(self.flags)
@@ -64,7 +64,8 @@ class x10Tuner(JvmFlagsTunerInterface):
         for i in range(0,int(args.iterations)):
             # if self.runtime_limit>0:
             #     print 'Execution with run time limit...'
-            run_result = self.call_program('ab -n 1000 -c10 -g result.dat "http://10.8.106.246/rubis_servlets/servlet/edu.rice.rubis.servlets.SearchItemsByCategory?category=1&categoryName=Antiques+%26+Art+&page=0&nbOfItems=25"')
+            #run_result = self.call_program('ab -n 1000 -c10 -g result.dat "http://10.8.106.246/rubis_servlets/servlet/edu.rice.rubis.servlets.SearchItemsByCategory?category=1&categoryName=Antiques+%26+Art+&page=0&nbOfItems=25"', limit=100)
+	    run_result = self.call_program('java -mx512M -cp .:/home/milinda/tpcw1.0\ 4 rbe.RBE -EB rbe.EBTPCW1Factory 400 -OUT browsing.m -RU 50 -MI 100 -RD 50 -WWW http://10.8.106.246/tpcw/ -CUST 144000 -ITEM 10000 -TT 1.0 -MAXERROR 0', limit=300)
             # else:
             #     run_result = self.call_program('ab -n 100 -c5 http://10.8.106.245:8080/rubis_servlets/')
             # print self.get_ms_x10benchmark(run_result['stdout'])
@@ -81,7 +82,8 @@ class x10Tuner(JvmFlagsTunerInterface):
         # m=re.search('Time per request:[\s]*[0-9]*.[0-9]*[\s]*\[ms\][\s]*\(mean\)',result,flags=re.DOTALL)
 
         # Getting the min
-        m=re.search('100%[\s]*[0-9]*[\s]*\(longest request\)',result,flags=re.DOTALL)
+        # m=re.search('100%[\s]*[0-9]*[\s]*\(longest request\)',result,flags=re.DOTALL)
+	m=re.search('Average Response Time : [0-9.]*',result,flags=re.DOTALL)
 
         # print m
         m_sec=10000000
@@ -90,8 +92,9 @@ class x10Tuner(JvmFlagsTunerInterface):
             #Getting the average
             # m_sec=re.sub('Time per request:       ','',m_sec)
             # m_sec=re.sub('[\s]*\[ms\][\s]*\(mean\)','',m_sec)
-            m_sec=re.sub('100%[\s]*','',m_sec)
-            m_sec=re.sub('\(longest request\)','',m_sec)
+            m_sec=re.sub('Average Response Time : ','',m_sec)
+	    #m_sec=re.sub('100%[\s]*','',m_sec)
+            #m_sec=re.sub('\(longest request\)','',m_sec)
         try:
             m_sec=float(m_sec)
         except:

@@ -394,3 +394,7 @@ JVM Hostspot Configuration file for benchmark help
 Tuner started on = 2015-11-02 09:19:40.373977
 Tuning Flags : bytecode,codecache,compilation,compiler,deoptimization,gc,interpreter,memory,priorities,temporary
 Default Configuration Metric:208.8
+JVM Hostspot Configuration file for benchmark help
+Tuner started on = 2015-11-02 10:41:38.076314
+Tuning Flags : bytecode,codecache,compilation,compiler,deoptimization,gc,interpreter,memory,priorities,temporary
+Default Configuration Metric:151.4
