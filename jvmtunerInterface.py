@@ -29,7 +29,6 @@ argparser.add_argument('--flags', default='bytecode,codecache,compilation,compil
 argparser.add_argument('--iterations',
                        help='number of iterations to run a program to average runtime',
                        default='5')
-
 class JvmFlagsTunerInterface(opentuner.measurement.MeasurementInterface):
 
     __metaclass__ = abc.ABCMeta
@@ -330,11 +329,11 @@ class JvmFlagsTunerInterface(opentuner.measurement.MeasurementInterface):
         for index, value in self.ajp_param_flags.iterrows():
             m.add_parameter(manipulator.IntegerParameter(value['name'],value['min'],value['max']))
 
-        #print "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
-        #print "Dumping the manipulator to a file"
-        #pickle.dump( m, open( "manipulator.p", "wb" ) )
+        print "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+        print "Dumping the manipulator to a file"
+        pickle.dump( m, open( "manipulator.p", "wb" ) )
 
-        #return m
+        return m
 
     def add_to_flags_bool(self,cfg,flag):
         if cfg[flag] == 'on':
@@ -548,27 +547,24 @@ class JvmFlagsTunerInterface(opentuner.measurement.MeasurementInterface):
 
 
 
+        run_time=self.execute_program()
+        temp_improvement=float((self.default_metric-run_time)/self.default_metric)
+        if temp_improvement>= self.improvement:
+            self.improvement=temp_improvement
+            self.call_program("cp result.dat ./TunedConfiguration/tuned.dat")
+            self.append_to_config_file("Apache prefork Configuration : ")
+            self.append_to_config_file(str(self.apache_flag_configuration))
+            self.append_to_config_file("MySQL Configuration : ")
+            self.append_to_config_file(str(self.mysql_flag_configuration))
+            self.append_to_config_file("AJP Connector Configuration : ")
+            self.append_to_config_file(str(self.ajp_flag_configuration))
 
-        result=self.execute_program()
-        if result.state!='ERROR':
-            run_time = result.time
-            temp_improvement=float((self.default_metric-run_time)/self.default_metric)
-            if temp_improvement>= self.improvement:
-                self.improvement=temp_improvement
-                self.call_program("cp result.dat ./TunedConfiguration/tuned.dat")
-                self.append_to_config_file("Apache prefork Configuration : ")
-                self.append_to_config_file(str(self.apache_flag_configuration))
-                self.append_to_config_file("MySQL Configuration : ")
-                self.append_to_config_file(str(self.mysql_flag_configuration))
-                self.append_to_config_file("AJP Connector Configuration : ")
-                self.append_to_config_file(str(self.ajp_flag_configuration))
+            self.append_to_config_file("Tomcat JVM Configuration : ")
+	    self.append_to_config_file(self.flags)
+            self.append_to_config_file("Improvement: %s" %self.improvement)
+            self.append_to_config_file("Configuration Found At: %s" %datetime.datetime.now())
 
-                self.append_to_config_file("Tomcat JVM Configuration : ")
-    	    self.append_to_config_file(self.flags)
-                self.append_to_config_file("Improvement: %s" %self.improvement)
-                self.append_to_config_file("Configuration Found At: %s" %datetime.datetime.now())
-
-        return result
+        return Result(time=run_time)
 
     @abc.abstractmethod
     def execute_program(self):
