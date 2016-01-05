@@ -548,23 +548,25 @@ class JvmFlagsTunerInterface(opentuner.measurement.MeasurementInterface):
 
 
         run_time=self.execute_program()
-        temp_improvement=float((self.default_metric-run_time)/self.default_metric)
-        if temp_improvement>= self.improvement:
-            self.improvement=temp_improvement
-            self.call_program("cp result.dat ./TunedConfiguration/tuned.dat")
-            self.append_to_config_file("Apache prefork Configuration : ")
-            self.append_to_config_file(str(self.apache_flag_configuration))
-            self.append_to_config_file("MySQL Configuration : ")
-            self.append_to_config_file(str(self.mysql_flag_configuration))
-            self.append_to_config_file("AJP Connector Configuration : ")
-            self.append_to_config_file(str(self.ajp_flag_configuration))
+        if run_time!=-1:
+            temp_improvement=float((self.default_metric-run_time)/self.default_metric)
+            if temp_improvement>= self.improvement:
+                self.improvement=temp_improvement
+                self.call_program("cp result.dat ./TunedConfiguration/tuned.dat")
+                self.append_to_config_file("Apache prefork Configuration : ")
+                self.append_to_config_file(str(self.apache_flag_configuration))
+                self.append_to_config_file("MySQL Configuration : ")
+                self.append_to_config_file(str(self.mysql_flag_configuration))
+                self.append_to_config_file("AJP Connector Configuration : ")
+                self.append_to_config_file(str(self.ajp_flag_configuration))
 
-            self.append_to_config_file("Tomcat JVM Configuration : ")
-	    self.append_to_config_file(self.flags)
-            self.append_to_config_file("Improvement: %s" %self.improvement)
-            self.append_to_config_file("Configuration Found At: %s" %datetime.datetime.now())
-
-        return Result(time=run_time)
+                self.append_to_config_file("Tomcat JVM Configuration : ")
+    	        self.append_to_config_file(self.flags)
+                self.append_to_config_file("Improvement: %s" %self.improvement)
+                self.append_to_config_file("Configuration Found At: %s" %datetime.datetime.now())
+            return Result(time=run_time)
+        else:
+            return Result(state='ERROR', time=float('inf'))
 
     @abc.abstractmethod
     def execute_program(self):
