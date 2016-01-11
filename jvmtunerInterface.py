@@ -29,6 +29,10 @@ argparser.add_argument('--flags', default='bytecode,codecache,compilation,compil
 argparser.add_argument('--iterations',
                        help='number of iterations to run a program to average runtime',
                        default='5')
+argparser.add_argument('--tune',
+                       help='What servers are to be tuned',
+                       default='tomcat,apache,mysql,tomcat_jvm')
+
 class JvmFlagsTunerInterface(opentuner.measurement.MeasurementInterface):
 
     __metaclass__ = abc.ABCMeta
@@ -48,6 +52,8 @@ class JvmFlagsTunerInterface(opentuner.measurement.MeasurementInterface):
         self.flags_folder = 'Flags/'
         self.configuration_file_folder = 'Configurations/'
         self.tuner_config_file_folder='TunedConfiguration/'
+        self.tune = self.args.tune.split(',')
+        print self.tune
 
 	if not os.path.exists(self.configuration_file_folder):
 	    os.makedirs(self.configuration_file_folder)
@@ -301,37 +307,45 @@ class JvmFlagsTunerInterface(opentuner.measurement.MeasurementInterface):
 
     def manipulator(self):
         m = manipulator.ConfigurationManipulator()
-        for flag_set in self.bool_flags:
-            for flag in flag_set:
+
+        if 'tomcat_jvm' in self.tune:
+            print "Adding Tomcat JVM flags to the tuning configurations"
+            for flag_set in self.bool_flags:
+                for flag in flag_set:
+                    m.add_parameter(manipulator.EnumParameter(flag, ['on', 'off']))
+            for flag_set in self.param_flags:
+                for flag in flag_set:
+                    value = flag_set[flag]
+                    if(value['min'] >= value['max']):
+                        m.add_parameter(manipulator.IntegerParameter(value['flagname'],value['max'],value['min']))
+                    else:
+                        m.add_parameter(manipulator.IntegerParameter(value['flagname'],value['min'],value['max']))
+            for flag in self.apache_bool_flags:
                 m.add_parameter(manipulator.EnumParameter(flag, ['on', 'off']))
-        for flag_set in self.param_flags:
-            for flag in flag_set:
-                value = flag_set[flag]
-                if(value['min'] >= value['max']):
-                    m.add_parameter(manipulator.IntegerParameter(value['flagname'],value['max'],value['min']))
-                else:
-                    m.add_parameter(manipulator.IntegerParameter(value['flagname'],value['min'],value['max']))
-        for flag in self.apache_bool_flags:
-            m.add_parameter(manipulator.EnumParameter(flag, ['on', 'off']))
 
         # print self.apache_param_flags
+        if 'apache' in self.tune:
+            print "Adding Apache flags to the tuning configurations"
+            for index, value in self.apache_param_flags.iterrows():
+                m.add_parameter(manipulator.IntegerParameter(value['name'],value['min'],value['max']))
 
-        for index, value in self.apache_param_flags.iterrows():
-            m.add_parameter(manipulator.IntegerParameter(value['name'],value['min'],value['max']))
+        if 'mysql' in self.tune:
+            print "Adding MySQL flags to the tuning configurations"
+            for flag in self.mysql_bool_flags:
+                m.add_parameter(manipulator.EnumParameter(flag, ['on', 'off']))
+            for index, value in self.mysql_param_flags.iterrows():
+                m.add_parameter(manipulator.IntegerParameter(value['name'],value['min'],value['max']))
 
-        for flag in self.mysql_bool_flags:
-            m.add_parameter(manipulator.EnumParameter(flag, ['on', 'off']))
-        for index, value in self.mysql_param_flags.iterrows():
-            m.add_parameter(manipulator.IntegerParameter(value['name'],value['min'],value['max']))
+        if 'tomcat' in self.tune:
+            print "Adding Tomcat AJP Connector flags to the tuning configurations"
+            for flag in self.ajp_bool_flags:
+                m.add_parameter(manipulator.EnumParameter(flag, ['on', 'off']))
+            for index, value in self.ajp_param_flags.iterrows():
+                m.add_parameter(manipulator.IntegerParameter(value['name'],value['min'],value['max']))
 
-        for flag in self.ajp_bool_flags:
-            m.add_parameter(manipulator.EnumParameter(flag, ['on', 'off']))
-        for index, value in self.ajp_param_flags.iterrows():
-            m.add_parameter(manipulator.IntegerParameter(value['name'],value['min'],value['max']))
-
-        print "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
-        print "Dumping the manipulator to a file"
-        pickle.dump( m, open( "manipulator.p", "wb" ) )
+        # print "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+        # print "Dumping the manipulator to a file"
+        # pickle.dump( m, open( "manipulator.p", "wb" ) )
 
         return m
 
@@ -350,200 +364,204 @@ class JvmFlagsTunerInterface(opentuner.measurement.MeasurementInterface):
         cfg = desired_result.configuration.data
         self.flags = ''
 
+        if 'tomcat_jvm' in self.tune:
         # assign garbage collector flags
-        if(self.gc):
-            for flag in self.gc_select_flags:
-                if cfg[flag] == 'on':
-                    self.flags += ' -XX:+{0}'.format(flag)
-                    if flag == 'UseParallelGC':
-                        for gc_flag in self.parallel_common_bool:
-                            self.add_to_flags_bool(cfg, gc_flag)
-                        for gc_flag in self.parallel_common_param:
-                            self.add_to_flags_param(cfg, gc_flag, self.parallel_common_param)
+            if(self.gc):
+                for flag in self.gc_select_flags:
+                    if cfg[flag] == 'on':
+                        self.flags += ' -XX:+{0}'.format(flag)
+                        if flag == 'UseParallelGC':
+                            for gc_flag in self.parallel_common_bool:
+                                self.add_to_flags_bool(cfg, gc_flag)
+                            for gc_flag in self.parallel_common_param:
+                                self.add_to_flags_param(cfg, gc_flag, self.parallel_common_param)
 
-                        for gc_flag in self.parallel_young_bool:
-                            self.add_to_flags_bool(cfg, gc_flag)
-                        for gc_flag in self.parallel_young_param:
-                            self.add_to_flags_param(cfg, gc_flag, self.parallel_young_param)
+                            for gc_flag in self.parallel_young_bool:
+                                self.add_to_flags_bool(cfg, gc_flag)
+                            for gc_flag in self.parallel_young_param:
+                                self.add_to_flags_param(cfg, gc_flag, self.parallel_young_param)
 
-                        # with parallel gc it is possible to use or not to use parallel old
-                        for gc_flag in self.gc_select_flags:
-                            if gc_flag == 'UseParallelOldGC':
-                                if cfg[gc_flag] == 'on':
-                                    self.flags += ' -XX:+{0}'.format(gc_flag)
-                                    for parallel_old_flag in self.parallel_old_bool:
-                                        self.add_to_flags_bool(cfg, parallel_old_flag)
-                                    for parallel_old_flag in self.parallel_old_param:
-                                        self.add_to_flags_param(cfg, parallel_old_flag, self.parallel_old_param)
-                                elif cfg[gc_flag] == 'off':
-                                    self.flags += ' -XX:-{0}'.format(gc_flag)
-                        break
+                            # with parallel gc it is possible to use or not to use parallel old
+                            for gc_flag in self.gc_select_flags:
+                                if gc_flag == 'UseParallelOldGC':
+                                    if cfg[gc_flag] == 'on':
+                                        self.flags += ' -XX:+{0}'.format(gc_flag)
+                                        for parallel_old_flag in self.parallel_old_bool:
+                                            self.add_to_flags_bool(cfg, parallel_old_flag)
+                                        for parallel_old_flag in self.parallel_old_param:
+                                            self.add_to_flags_param(cfg, parallel_old_flag, self.parallel_old_param)
+                                    elif cfg[gc_flag] == 'off':
+                                        self.flags += ' -XX:-{0}'.format(gc_flag)
+                            break
 
-                    elif flag == 'UseParallelOldGC':
-                        for gc_flag in self.parallel_common_bool:
-                            self.add_to_flags_bool(cfg, gc_flag)
-                        for gc_flag in self.parallel_common_param:
-                            self.add_to_flags_param(cfg, gc_flag, self.parallel_common_param)
+                        elif flag == 'UseParallelOldGC':
+                            for gc_flag in self.parallel_common_bool:
+                                self.add_to_flags_bool(cfg, gc_flag)
+                            for gc_flag in self.parallel_common_param:
+                                self.add_to_flags_param(cfg, gc_flag, self.parallel_common_param)
 
-                        for gc_flag in self.parallel_young_bool:
-                            self.add_to_flags_bool(cfg, gc_flag)
-                        for gc_flag in self.parallel_young_param:
-                            self.add_to_flags_param(cfg, gc_flag, self.parallel_young_param)
+                            for gc_flag in self.parallel_young_bool:
+                                self.add_to_flags_bool(cfg, gc_flag)
+                            for gc_flag in self.parallel_young_param:
+                                self.add_to_flags_param(cfg, gc_flag, self.parallel_young_param)
 
-                        for parallel_old_flag in self.parallel_old_bool:
-                            self.add_to_flags_bool(cfg, parallel_old_flag)
-                        for parallel_old_flag in self.parallel_old_param:
-                            self.add_to_flags_param(cfg, parallel_old_flag, self.parallel_old_param)
-                        break
+                            for parallel_old_flag in self.parallel_old_bool:
+                                self.add_to_flags_bool(cfg, parallel_old_flag)
+                            for parallel_old_flag in self.parallel_old_param:
+                                self.add_to_flags_param(cfg, parallel_old_flag, self.parallel_old_param)
+                            break
 
-                    # if g1 gc only use g1 related flags + common
-                    elif flag == 'UseG1GC':
-                        for gc_flag in self.g1_bool:
-                            self.add_to_flags_bool(cfg, gc_flag)
-                        for gc_flag in self.g1_param:
-                            self.add_to_flags_param(cfg, gc_flag, self.g1_param)
-                        break
+                        # if g1 gc only use g1 related flags + common
+                        elif flag == 'UseG1GC':
+                            for gc_flag in self.g1_bool:
+                                self.add_to_flags_bool(cfg, gc_flag)
+                            for gc_flag in self.g1_param:
+                                self.add_to_flags_param(cfg, gc_flag, self.g1_param)
+                            break
 
-                    elif flag == 'UseConcMarkSweepGC':
-                        for gc_flag in self.cms_bool:
-                            self.add_to_flags_bool(cfg, gc_flag)
-                        for gc_flag in self.cms_param:
-                            self.add_to_flags_param(cfg, gc_flag, self.cms_param)
+                        elif flag == 'UseConcMarkSweepGC':
+                            for gc_flag in self.cms_bool:
+                                self.add_to_flags_bool(cfg, gc_flag)
+                            for gc_flag in self.cms_param:
+                                self.add_to_flags_param(cfg, gc_flag, self.cms_param)
 
-                        for gc_flag in self.gc_select_flags:
-                            if gc_flag == 'UseParNewGC':
-                                if cfg[gc_flag] == 'on':
-                                    self.flags += ' -XX:+{0}'.format(gc_flag)
-                                    for parnew_flag in self.parnew_bool:
-                                        self.add_to_flags_bool(cfg, parnew_flag)
-                                    for parnew_flag in self.parnew_param:
-                                        self.add_to_flags_param(cfg, parnew_flag, self.parnew_param)
-                                elif cfg[gc_flag] == 'off':
-                                    self.flags += ' -XX:-{0}'.format(gc_flag)
-                        break
+                            for gc_flag in self.gc_select_flags:
+                                if gc_flag == 'UseParNewGC':
+                                    if cfg[gc_flag] == 'on':
+                                        self.flags += ' -XX:+{0}'.format(gc_flag)
+                                        for parnew_flag in self.parnew_bool:
+                                            self.add_to_flags_bool(cfg, parnew_flag)
+                                        for parnew_flag in self.parnew_param:
+                                            self.add_to_flags_param(cfg, parnew_flag, self.parnew_param)
+                                    elif cfg[gc_flag] == 'off':
+                                        self.flags += ' -XX:-{0}'.format(gc_flag)
+                            break
 
-                    elif flag == 'UseParNewGC':
-                        for gc_flag in self.parnew_bool:
-                            self.add_to_flags_bool(cfg, gc_flag)
-                        for gc_flag in self.parnew_param:
-                            self.add_to_flags_param(cfg, gc_flag, self.parnew_param)
+                        elif flag == 'UseParNewGC':
+                            for gc_flag in self.parnew_bool:
+                                self.add_to_flags_bool(cfg, gc_flag)
+                            for gc_flag in self.parnew_param:
+                                self.add_to_flags_param(cfg, gc_flag, self.parnew_param)
 
-                        for gc_flag in self.gc_select_flags:
-                            if gc_flag == 'UseConcMarkSweepGC':
-                                if cfg[gc_flag] == 'on':
-                                    self.flags += ' -XX:+{0}'.format(gc_flag)
-                                    for cms_flag in self.cms_bool:
-                                        self.add_to_flags_bool(cfg, cms_flag)
-                                    for cms_flag in self.cms_param:
-                                        self.add_to_flags_param(cfg, cms_flag, self.cms_param)
-                                elif cfg[gc_flag] == 'off':
-                                    self.flags += ' -XX:-{0}'.format(gc_flag)
-                        break
+                            for gc_flag in self.gc_select_flags:
+                                if gc_flag == 'UseConcMarkSweepGC':
+                                    if cfg[gc_flag] == 'on':
+                                        self.flags += ' -XX:+{0}'.format(gc_flag)
+                                        for cms_flag in self.cms_bool:
+                                            self.add_to_flags_bool(cfg, cms_flag)
+                                        for cms_flag in self.cms_param:
+                                            self.add_to_flags_param(cfg, cms_flag, self.cms_param)
+                                    elif cfg[gc_flag] == 'off':
+                                        self.flags += ' -XX:-{0}'.format(gc_flag)
+                            break
 
-                    # if serial gc only the common gc flags will be used
-                    elif flag == 'UseSerialGC':
-                        break
+                        # if serial gc only the common gc flags will be used
+                        elif flag == 'UseSerialGC':
+                            break
 
-            #add common gc flags
-            for gc_flag in self.gc_common_bool:
-                self.add_to_flags_bool(cfg, gc_flag)
-            for gc_flag in self.gc_common_param:
-                self.add_to_flags_param(cfg, gc_flag, self.gc_common_param)
+                #add common gc flags
+                for gc_flag in self.gc_common_bool:
+                    self.add_to_flags_bool(cfg, gc_flag)
+                for gc_flag in self.gc_common_param:
+                    self.add_to_flags_param(cfg, gc_flag, self.gc_common_param)
 
 
-        # assign compilation flags
-        if(self.compilation):
-            for flag in self.compilation_bool:
-                if cfg[flag] == 'on':
-                    self.flags += ' -XX:+{0}'.format(flag)
-                    # if tieredCompilation is on use tiered compilation + c1 compiler flags
-                    if flag == 'TieredCompilation':
-                        # use tiered compilation flags
-                        for tiered_flag in self.tiered_compilation_bool:
-                            self.add_to_flags_bool(cfg, tiered_flag)
-                        for tiered_flag in self.tiered_compilation_param:
-                            self.add_to_flags_param(cfg, tiered_flag, self.tiered_compilation_param)
+            # assign compilation flags
+            if(self.compilation):
+                for flag in self.compilation_bool:
+                    if cfg[flag] == 'on':
+                        self.flags += ' -XX:+{0}'.format(flag)
+                        # if tieredCompilation is on use tiered compilation + c1 compiler flags
+                        if flag == 'TieredCompilation':
+                            # use tiered compilation flags
+                            for tiered_flag in self.tiered_compilation_bool:
+                                self.add_to_flags_bool(cfg, tiered_flag)
+                            for tiered_flag in self.tiered_compilation_param:
+                                self.add_to_flags_param(cfg, tiered_flag, self.tiered_compilation_param)
 
-                        # if compiler flags are used use client compiler flags
-                        if(self.compiler):
-                            for c1_flag in self.client_bool:
-                                self.add_to_flags_bool(cfg, c1_flag)
+                            # if compiler flags are used use client compiler flags
+                            if(self.compiler):
+                                for c1_flag in self.client_bool:
+                                    self.add_to_flags_bool(cfg, c1_flag)
 
-                            for c1_flag in self.client_param:
-                                self.add_to_flags_param(cfg, c1_flag, self.client_param)
+                                for c1_flag in self.client_param:
+                                    self.add_to_flags_param(cfg, c1_flag, self.client_param)
 
-                elif cfg[flag] == 'off':
-                    self.flags += ' -XX:-{0}'.format(flag)
+                    elif cfg[flag] == 'off':
+                        self.flags += ' -XX:-{0}'.format(flag)
 
-            for flag in self.compilation_param:
-                self.add_to_flags_param(cfg, flag, self.compilation_param)
+                for flag in self.compilation_param:
+                    self.add_to_flags_param(cfg, flag, self.compilation_param)
 
-        # assign Compiler flags
-        if(self.compiler):
-            for flag in self.compiler_common_bool:
-                self.add_to_flags_bool(cfg, flag)
+            # assign Compiler flags
+            if(self.compiler):
+                for flag in self.compiler_common_bool:
+                    self.add_to_flags_bool(cfg, flag)
 
-            for flag in self.compiler_common_param:
-                self.add_to_flags_param(cfg, flag, self.compiler_common_param)
+                for flag in self.compiler_common_param:
+                    self.add_to_flags_param(cfg, flag, self.compiler_common_param)
 
-            for flag in self.server_bool:
-                self.add_to_flags_bool(cfg, flag)
-            for flag in self.server_param:
-                self.add_to_flags_param(cfg, flag, self.server_param)
+                for flag in self.server_bool:
+                    self.add_to_flags_bool(cfg, flag)
+                for flag in self.server_param:
+                    self.add_to_flags_param(cfg, flag, self.server_param)
 
-        if(self.bytecode):
-            for flag in self.bytecode_bool:
-                self.add_to_flags_bool(cfg, flag)
-            for flag in self.bytecode_param:
-                self.add_to_flags_param(cfg, flag, self.bytecode_param)
+            if(self.bytecode):
+                for flag in self.bytecode_bool:
+                    self.add_to_flags_bool(cfg, flag)
+                for flag in self.bytecode_param:
+                    self.add_to_flags_param(cfg, flag, self.bytecode_param)
 
-        if(self.codecache):
-            for flag in self.codecache_bool:
-                self.add_to_flags_bool(cfg, flag)
-            for flag in self.codecache_param:
-                self.add_to_flags_param(cfg, flag, self.codecache_param)
+            if(self.codecache):
+                for flag in self.codecache_bool:
+                    self.add_to_flags_bool(cfg, flag)
+                for flag in self.codecache_param:
+                    self.add_to_flags_param(cfg, flag, self.codecache_param)
 
-        if(self.deoptimization):
-            for flag in self.deoptimization_bool:
-                self.add_to_flags_bool(cfg, flag)
-            for flag in self.deoptimization_param:
-                self.add_to_flags_param(cfg, flag, self.deoptimization_param)
+            if(self.deoptimization):
+                for flag in self.deoptimization_bool:
+                    self.add_to_flags_bool(cfg, flag)
+                for flag in self.deoptimization_param:
+                    self.add_to_flags_param(cfg, flag, self.deoptimization_param)
 
-        if(self.interpreter):
-            for flag in self.interpreter_bool:
-                self.add_to_flags_bool(cfg, flag)
-            for flag in self.interpreter_param:
-                self.add_to_flags_param(cfg, flag,self.interpreter_param)
+            if(self.interpreter):
+                for flag in self.interpreter_bool:
+                    self.add_to_flags_bool(cfg, flag)
+                for flag in self.interpreter_param:
+                    self.add_to_flags_param(cfg, flag,self.interpreter_param)
 
-        if(self.memory):
-            for flag in self.memory_bool:
-                self.add_to_flags_bool(cfg, flag)
-            for flag in self.memory_param:
-                self.add_to_flags_param(cfg, flag,self.memory_param )
+            if(self.memory):
+                for flag in self.memory_bool:
+                    self.add_to_flags_bool(cfg, flag)
+                for flag in self.memory_param:
+                    self.add_to_flags_param(cfg, flag,self.memory_param )
 
-        if(self.priorities):
-            for flag in self.priorities_bool:
-                self.add_to_flags_bool(cfg, flag)
-            for flag in self.priorities_param:
-                self.add_to_flags_param(cfg, flag,self.priorities_param )
+            if(self.priorities):
+                for flag in self.priorities_bool:
+                    self.add_to_flags_bool(cfg, flag)
+                for flag in self.priorities_param:
+                    self.add_to_flags_param(cfg, flag,self.priorities_param )
 
-        if(self.temporary):
-            for flag in self.temporary_bool:
-                self.add_to_flags_bool(cfg, flag)
-            for flag in self.temporary_param:
-                self.add_to_flags_param(cfg, flag,self.temporary_param )
+            if(self.temporary):
+                for flag in self.temporary_bool:
+                    self.add_to_flags_bool(cfg, flag)
+                for flag in self.temporary_param:
+                    self.add_to_flags_param(cfg, flag,self.temporary_param )
 
-        self.apache_flag_configuration = {}
-        for flag in self.apache_flag_names:
-            self.apache_flag_configuration[flag]=cfg[flag]
+        if 'apache' in self.tune:
+            self.apache_flag_configuration = {}
+            for flag in self.apache_flag_names:
+                self.apache_flag_configuration[flag]=cfg[flag]
 
-        self.mysql_flag_configuration = {}
-        for flag in self.mysql_flag_names:
-            self.mysql_flag_configuration[flag]=cfg[flag]
+        if 'mysql' in self.tune:
+            self.mysql_flag_configuration = {}
+            for flag in self.mysql_flag_names:
+                self.mysql_flag_configuration[flag]=cfg[flag]
 
-        self.ajp_flag_configuration = {}
-        for flag in self.ajp_flag_names:
-            self.ajp_flag_configuration[flag]=cfg[flag]
+        if 'tomcat' in self.tune:
+            self.ajp_flag_configuration = {}
+            for flag in self.ajp_flag_names:
+                self.ajp_flag_configuration[flag]=cfg[flag]
 
 
 

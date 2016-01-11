@@ -5,3 +5,8 @@ Traceback (most recent call last):
 OSError: [Errno 1] Operation not permitted
 [2015-09-20 02:49:26,105]   ERROR paramiko.transport: Socket exception: Connection reset by peer (104) @transport.py:1404
 [2015-09-28 13:30:02,188] WARNING paramiko.transport: Success for unrequested channel! [??] @transport.py:1430
+[2016-01-05 11:01:29,432]   ERROR opentuner.measurement.interface: error killing process 3159 @interface.py:275
+Traceback (most recent call last):
+  File "/Users/Vimuth/Desktop/hotspottuner/Tomcat-Offline/src/opentuner/measurement/interface.py", line 271, in goodkillpg
+    os.killpg(pid, signal.SIGKILL)
+OSError: [Errno 3] No such process

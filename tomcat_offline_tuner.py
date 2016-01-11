@@ -32,19 +32,25 @@ class MultiTierTuner(JvmFlagsTunerInterface):
 
         # print "\\n"
         print "The following configuration was used : "
-        print self.apache_flag_configuration
-        print self.mysql_flag_configuration
-        print self.ajp_flag_configuration
-        print self.flags
 
         temp_metric = 0
         args.iterations=1;
 
-        # if self.flags:
-        self.set_configuration(self.flags)
-        self.set_apache2_configuration(self.flags)
-        self.set_mysql_configuration(self.flags)
-        self.set_ajp_configuration(self.flags)
+        if 'apache' in self.tune:
+            print self.apache_flag_configuration
+            self.set_apache2_configuration(self.flags)
+
+        if 'mysql' in self.tune:
+            print self.mysql_flag_configuration
+            self.set_mysql_configuration(self.flags)
+
+        if 'tomcat' in self.tune:
+            print self.ajp_flag_configuration
+            self.set_ajp_configuration(self.flags)
+
+        if 'tomcat_jvm' in self.tune:
+            print self.flags
+            self.set_configuration(self.flags)
 
     	if not self.restart_servers():
             print "Configuration Failed while restarting the servers!"
