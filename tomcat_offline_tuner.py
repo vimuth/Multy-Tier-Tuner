@@ -38,25 +38,37 @@ class MultiTierTuner(JvmFlagsTunerInterface):
 
         if 'apache' in self.tune:
             print self.apache_flag_configuration
-            self.set_apache2_configuration(self.flags)
+            result = self.set_apache2_configuration(self.flags)
+            if result==False:
+                print "Configuration Failed while restarting the Apache servers!"
+                return -1
 
         if 'mysql' in self.tune:
             print self.mysql_flag_configuration
-            self.set_mysql_configuration(self.flags)
+            result = self.set_mysql_configuration(self.flags)
+            if result==False:
+                print "Configuration Failed while restarting the MySQl servers!"
+                return -1
 
         if 'tomcat' in self.tune:
             print self.ajp_flag_configuration
-            self.set_ajp_configuration(self.flags)
+            result = self.set_ajp_configuration(self.flags)
+            if result==False:
+                print "Configuration Failed while restarting the Tomcat servers!"
+                return -1
 
         if 'tomcat_jvm' in self.tune:
             print self.flags
-            self.set_configuration(self.flags)
+            result = self.set_configuration(self.flags)
+            if result==False:
+                print "Configuration Failed while restarting the Tomcat servers!"
+                return -1
 
-    	if not self.restart_servers():
-            print "Configuration Failed while restarting the servers!"
-            return -1
+    	# if not self.restart_servers():
+        #     print "Configuration Failed while restarting the servers!"
+        #     return -1
 
-    	health = self.health_check('10.8.106.246', '/rubis_servlets')
+    	health = self.health_check('10.8.106.246', '/tpcw/servlet/TPCW_home_interaction')
         if health==404:
             print "Health check Failed!"
             return -1
@@ -67,7 +79,7 @@ class MultiTierTuner(JvmFlagsTunerInterface):
             # if self.runtime_limit>0:
             #     print 'Execution with run time limit...'
             #run_result = self.call_program('ab -n 1000 -c10 -g result.dat "http://10.8.106.246/rubis_servlets/servlet/edu.rice.rubis.servlets.SearchItemsByCategory?category=1&categoryName=Antiques+%26+Art+&page=0&nbOfItems=25"', limit=100)
-	    run_result = self.call_program('java -mx512M -cp .:/home/milinda/tpcw1.0\ 4 rbe.RBE -EB rbe.EBTPCW1Factory 400 -OUT browsing.m -RU 50 -MI 100 -RD 50 -WWW http://10.8.106.246/tpcw/ -CUST 144000 -ITEM 10000 -TT 1.0 -MAXERROR 0', limit=300)
+	    run_result = self.call_program('java -mx512M -cp .:/home/milinda/tpcw1.0\ 4 rbe.RBE -EB rbe.EBTPCW1Factory 500 -OUT browsing.m -RU 25 -MI 50 -RD 25 -WWW http://10.8.106.246/tpcw/ -CUST 144000 -ITEM 10000 -TT 1.0 -MAXERROR 0', limit=300)
             # else:
             #     run_result = self.call_program('ab -n 100 -c5 http://10.8.106.245:8080/rubis_servlets/')
             # print self.get_ms_x10benchmark(run_result['stdout'])
@@ -110,6 +122,16 @@ class MultiTierTuner(JvmFlagsTunerInterface):
         stdin.write('cse@123\n')
         stdin.flush()
 
+        stdin, stdout, stderr = ssh.exec_command("sudo -S service tomcat7 restart")
+        stdin.write('cse@123\n')
+        stdin.flush()
+        output = stdout.read().splitlines()
+        print output
+        if 'fail' in output[-1] :
+            return False
+        return True
+
+
     def set_ajp_configuration(self, configuration):
         ssh.connect('10.8.106.245', username='cse',
             password='cse@123')
@@ -141,6 +163,14 @@ class MultiTierTuner(JvmFlagsTunerInterface):
             stdin.flush()
             # output = stdout.read().splitlines()
             # print output, stderr
+        stdin, stdout, stderr = ssh.exec_command("sudo -S service apache2 restart")
+        stdin.write('vimuth123\n')
+        stdin.flush()
+        output = stdout.read().splitlines()
+        print output
+        if 'fail' in output[-1] :
+            return False
+        return True
 
     def set_mysql_configuration(self, configuration):
         ssh.connect('10.8.106.244', username='cse',
@@ -151,8 +181,16 @@ class MultiTierTuner(JvmFlagsTunerInterface):
                                                     #  'sudo -S sed -i -r -e \'s/'       +'[[:space:]]*=[[:space:]]*[0-9]*[M|K|G]?/key_buffer_size = 13M/g'
             stdin.write('cse@123\n')
             stdin.flush()
-            # output = stdout.read().splitlines()
 
+        print "Restarting servers..."
+        stdin, stdout, stderr = ssh.exec_command("sudo -S service mysql restart")
+        stdin.write('cse@123\n')
+        stdin.flush()
+        output = stdout.read().splitlines()
+        print output
+        if 'fail' in output[-1] :
+            return False
+        return True
 
     def restart_servers(self):
         print "Restarting servers..."
