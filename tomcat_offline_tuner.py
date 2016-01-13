@@ -69,17 +69,19 @@ class MultiTierTuner(JvmFlagsTunerInterface):
         #     return -1
 
     	health = self.health_check('10.8.106.246', '/tpcw/servlet/TPCW_home_interaction')
-        if health==404:
-            print "Health check Failed!"
+        if health!=200:
+            print "Health check Failed with code -> ",health
             return -1
+	else:
+	    print "Health check passed with code -> ",health
 
-        print "Benchmark results :\n"
+        print "Benchmark running :\n"
 
         for i in range(0,int(args.iterations)):
             # if self.runtime_limit>0:
             #     print 'Execution with run time limit...'
             #run_result = self.call_program('ab -n 1000 -c10 -g result.dat "http://10.8.106.246/rubis_servlets/servlet/edu.rice.rubis.servlets.SearchItemsByCategory?category=1&categoryName=Antiques+%26+Art+&page=0&nbOfItems=25"', limit=100)
-	    run_result = self.call_program('java -mx512M -cp .:/home/milinda/tpcw1.0\ 4 rbe.RBE -EB rbe.EBTPCW1Factory 500 -OUT browsing.m -RU 25 -MI 50 -RD 25 -WWW http://10.8.106.246/tpcw/ -CUST 144000 -ITEM 10000 -TT 1.0 -MAXERROR 0', limit=300)
+	    run_result = self.call_program('java -mx512M -cp .:/home/milinda/tpcw1.0\ 4 rbe.RBE -EB rbe.EBTPCW1Factory 400 -OUT browsing.m -RU 25 -MI 50 -RD 25 -WWW http://10.8.106.246/tpcw/ -CUST 144000 -ITEM 10000 -TT 1.0 -MAXERROR 0', limit=200)
             # else:
             #     run_result = self.call_program('ab -n 100 -c5 http://10.8.106.245:8080/rubis_servlets/')
             # print self.get_ms_x10benchmark(run_result['stdout'])
@@ -229,11 +231,12 @@ class MultiTierTuner(JvmFlagsTunerInterface):
 
     def health_check(self, host, path):
         try:
-            conn = httplib.HTTPConnection(host)
+            conn = httplib.HTTPConnection(host, timeout=30)
             conn.request("HEAD", path)
             return conn.getresponse().status
-        except StandardError:
-            return None
+        except StandardError, e:
+            print e
+	    return "Other Error"
 
     def run_remote_sudo_command(self, host, username, password, command):
         try:
@@ -242,8 +245,9 @@ class MultiTierTuner(JvmFlagsTunerInterface):
             stdin.write(password+'\n')
             stdin.flush()
             return stdout, stderr
-        except StandardError:
+        except StandardError, e:
             print "Error while executing command"
+	    print e
             return None
 
 
