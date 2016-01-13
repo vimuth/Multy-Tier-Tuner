@@ -148,6 +148,14 @@ class MultiTierTuner(JvmFlagsTunerInterface):
         stdin.write('cse@123\n')                 #sudo sed -i -e \'s/<Connector port=\"8009\  ".*/AAAAAAAAA/g' /var/lib/tomcat7/conf/server.xml
         stdin.flush()
                 # print stdout.read().splitlines()
+        stdin, stdout, stderr = ssh.exec_command("sudo -S service tomcat7 restart")
+        stdin.write('cse@123\n')
+        stdin.flush()
+        output = stdout.read().splitlines()
+        print output
+        if 'fail' in output[-1] :
+            return False
+        return True
 
         # output = stdout.read().splitlines()
         # print output, stderr
@@ -182,7 +190,7 @@ class MultiTierTuner(JvmFlagsTunerInterface):
             stdin.write('cse@123\n')
             stdin.flush()
 
-        print "Restarting servers..."
+        # print "Restarting servers..."
         stdin, stdout, stderr = ssh.exec_command("sudo -S service mysql restart")
         stdin.write('cse@123\n')
         stdin.flush()
