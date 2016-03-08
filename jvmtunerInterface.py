@@ -363,7 +363,7 @@ class JvmFlagsTunerInterface(opentuner.measurement.MeasurementInterface):
     def run(self, desired_result, input, limit):
         cfg = desired_result.configuration.data
         self.flags = ''
-
+        print cfg
         if 'tomcat_jvm' in self.tune:
         # assign garbage collector flags
             if(self.gc):
